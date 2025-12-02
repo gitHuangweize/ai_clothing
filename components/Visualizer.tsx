@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { AppStep } from '../types';
+import ImagePreviewModal from './ImagePreviewModal';
 
 interface VisualizerProps {
   step: AppStep;
@@ -10,6 +11,8 @@ interface VisualizerProps {
 }
 
 const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage, resultImage, onStepClick }) => {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const canClick = (targetStep: number) => {
     if (targetStep === 1) return true; // Always can go to person selection
@@ -18,9 +21,22 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
     return false;
   };
 
-  const handleCardClick = (targetStep: number) => {
-    if (canClick(targetStep)) {
-      onStepClick(targetStep as AppStep);
+  const handleCardInteraction = (targetStep: number, image: string | null) => {
+    if (clickTimeoutRef.current) {
+      // Double click detected
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      if (image) {
+        setPreviewImage(image);
+      }
+    } else {
+      // Single click - wait to see if double click happens
+      clickTimeoutRef.current = setTimeout(() => {
+        if (canClick(targetStep)) {
+          onStepClick(targetStep as AppStep);
+        }
+        clickTimeoutRef.current = null;
+      }, 250);
     }
   };
 
@@ -66,7 +82,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         {/* Card 1: Person */}
         <div 
             className={getCardStyle(1)}
-            onClick={() => handleCardClick(1)}
+            onClick={() => handleCardInteraction(1, personImage)}
             title="选择模特"
         >
           <div className="w-full h-full overflow-hidden rounded-lg bg-white">
@@ -84,7 +100,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         {/* Card 2: Clothes */}
         <div 
             className={getCardStyle(2)}
-            onClick={() => handleCardClick(2)}
+            onClick={() => handleCardInteraction(2, clothesImage)}
             title={personImage ? "选择服装" : "请先选择模特"}
         >
            <div className="w-full h-full overflow-hidden rounded-lg bg-white">
@@ -102,7 +118,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         {/* Card 3: Result */}
         <div 
             className={getCardStyle(3)}
-            onClick={() => handleCardClick(3)}
+            onClick={() => handleCardInteraction(3, resultImage)}
             title={personImage && clothesImage ? "生成效果" : "请先选择模特和服装"}
         >
            <div className="w-full h-full overflow-hidden rounded-lg bg-white">
@@ -118,6 +134,12 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         </div>
 
       </div>
+
+      <ImagePreviewModal 
+        isOpen={!!previewImage}
+        imageUrl={previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 };
