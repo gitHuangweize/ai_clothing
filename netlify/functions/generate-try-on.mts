@@ -53,6 +53,22 @@ export default async (req: Request) => {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    const MAX_IMAGE_BYTES = 3_000_000; // ~3MB per image (base64 decoded)
+    const MAX_TOTAL_BYTES = 5_500_000; // ~5.5MB combined
+    const estimateBytes = (base64: string) => {
+      const raw = stripBase64Header(base64);
+      return Math.floor(raw.length * 0.75);
+    };
+
+    const personBytes = estimateBytes(personBase64);
+    const clothesBytes = estimateBytes(clothesBase64);
+    if (personBytes > MAX_IMAGE_BYTES || clothesBytes > MAX_IMAGE_BYTES || (personBytes + clothesBytes) > MAX_TOTAL_BYTES) {
+      return new Response(JSON.stringify({ error: "图片过大，请压缩后再试" }), {
+        status: 413,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const personPart = {
       inlineData: {
         data: stripBase64Header(personBase64),
@@ -71,12 +87,60 @@ export default async (req: Request) => {
       text: "Generate a realistic, high-quality full-body photo of the person in the first image wearing the clothing shown in the second image. Maintain the person's identity, facial features, pose, and body shape exactly. Replace their original outfit with the new clothing naturally. The background should be simple and clean."
     };
 
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: {
-        parts: [personPart, clothesPart, textPart],
-      },
-    });
+    const GENERATE_TIMEOUT_MS = 70000; // speed-first
+    const MAX_RETRIES = 2;
+
+    const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error("GENERATION_TIMEOUT")), timeoutMs)
+        ),
+      ]);
+    };
+
+    const shouldRetry = (error: any) => {
+      const status = error?.status;
+      if (status === 429) return true;
+      if (typeof status === "number" && status >= 500) return true;
+      const msg = (error?.message || "").toLowerCase();
+      return msg.includes("timeout") || msg.includes("econn") || msg.includes("enotfound") || msg.includes("etimedout");
+    };
+
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    let response: any = null;
+    let lastError: any = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        response = await withTimeout(
+          ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: {
+              parts: [personPart, clothesPart, textPart],
+            },
+          }),
+          GENERATE_TIMEOUT_MS
+        );
+        lastError = null;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        if (attempt >= MAX_RETRIES || !shouldRetry(err)) break;
+        const backoff = 700 * Math.pow(2, attempt) + Math.floor(Math.random() * 200);
+        await sleep(backoff);
+      }
+    }
+
+    if (lastError) {
+      const msg = (lastError?.message || "").includes("GENERATION_TIMEOUT")
+        ? "生成超时，请重试"
+        : "生成失败，请重试";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: (lastError?.message || "").includes("GENERATION_TIMEOUT") ? 504 : 502,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts) {

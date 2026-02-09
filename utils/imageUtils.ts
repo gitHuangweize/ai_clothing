@@ -163,4 +163,10 @@ export const preloadImages = async (urls: string[]): Promise<void> => {
         })
     )
   );
+
+  if (typeof window !== 'undefined') {
+    const win = window as any;
+    if (!win.__imagePreloadCache) win.__imagePreloadCache = new Set<string>();
+    unique.forEach((url) => win.__imagePreloadCache.add(url));
+  }
 };

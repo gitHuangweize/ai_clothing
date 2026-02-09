@@ -25,6 +25,14 @@ const ImageWithFade: React.FC<ImageWithFadeProps> = ({
     let cancelled = false;
     setLoaded(false);
 
+    const win = typeof window !== 'undefined' ? (window as any) : null;
+    if (win?.__imagePreloadCache instanceof Set && win.__imagePreloadCache.has(src)) {
+      setLoaded(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const img = new Image();
     img.src = src;
 
@@ -54,7 +62,14 @@ const ImageWithFade: React.FC<ImageWithFadeProps> = ({
         alt={alt}
         loading={loading}
         decoding={decoding}
-        onLoad={() => setLoaded(true)}
+        onLoad={() => {
+          const win = typeof window !== 'undefined' ? (window as any) : null;
+          if (win) {
+            if (!win.__imagePreloadCache) win.__imagePreloadCache = new Set<string>();
+            win.__imagePreloadCache.add(src);
+          }
+          setLoaded(true);
+        }}
         onError={() => setLoaded(true)}
         className={`block transition-opacity duration-300 ease-out ${loaded ? 'opacity-100' : 'opacity-0'} ${className || ''}`}
       />
