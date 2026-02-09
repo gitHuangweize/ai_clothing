@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { PRESET_PERSON_IMAGES } from '../constants';
 import { convertBlobToBase64, fetchUrlToBase64, preloadImages } from '../utils/imageUtils';
+import ImageWithFade from './ImageWithFade';
 
 interface Step1PersonProps {
   onSelect: (imageUrl: string) => void;
@@ -118,7 +119,12 @@ const Step1Person: React.FC<Step1PersonProps> = ({ onSelect, currentImage }) => 
                 onClick={() => handlePresetSelect(url)}
                 className={`relative group rounded-xl overflow-hidden aspect-[3/4] border-2 transition-all ${currentImage && currentImage.includes(url) ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent hover:border-blue-300'}`}
               >
-                <img src={url} alt={`Preset ${index}`} className="w-full h-full object-cover" />
+                <ImageWithFade
+                  src={url}
+                  alt={`Preset ${index}`}
+                  wrapperClassName="w-full h-full"
+                  className="w-full h-full object-cover"
+                />
               </button>
             ))}
           </div>

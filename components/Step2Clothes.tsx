@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PRESET_CLOTHES_IMAGES } from '../constants';
 import { convertBlobToBase64, fetchUrlToBase64, preloadImages } from '../utils/imageUtils';
+import ImageWithFade from './ImageWithFade';
 import { generateClothesFromText } from '../services/geminiService';
 
 interface Step2ClothesProps {
@@ -117,7 +118,12 @@ const Step2Clothes: React.FC<Step2ClothesProps> = ({ onSelect, personImage, curr
         {personImage && (
             <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                 <span className="text-xs text-gray-400">当前模特:</span>
-                <img src={personImage} alt="Selected Person" className="w-6 h-6 rounded-full object-cover" />
+                <ImageWithFade
+                  src={personImage}
+                  alt="Selected Person"
+                  wrapperClassName="w-6 h-6 rounded-full overflow-hidden"
+                  className="w-6 h-6 object-cover"
+                />
             </div>
         )}
       </div>
@@ -154,7 +160,12 @@ const Step2Clothes: React.FC<Step2ClothesProps> = ({ onSelect, personImage, curr
                 onClick={() => handlePresetSelect(url)}
                 className="relative group rounded-xl overflow-hidden aspect-square border-2 border-transparent hover:border-blue-300 transition-all focus:ring-2 focus:ring-blue-500 bg-gray-50"
               >
-                <img src={url} alt={`Clothes ${index}`} className="w-full h-full object-contain p-2" />
+                <ImageWithFade
+                  src={url}
+                  alt={`Clothes ${index}`}
+                  wrapperClassName="w-full h-full"
+                  className="w-full h-full object-contain p-2"
+                />
                 {customPresets.includes(url) && (
                     <span className="absolute top-1 right-1 bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">AI</span>
                 )}

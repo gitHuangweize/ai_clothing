@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { generateTryOnImage } from '../services/geminiService';
+import ImageWithFade from './ImageWithFade';
 
 interface Step3ResultProps {
   personImage: string;
@@ -87,12 +88,22 @@ const Step3Result: React.FC<Step3ResultProps> = ({ personImage, clothesImage, on
 
       <div className="flex items-center justify-center space-x-8 mb-8">
         <div className="relative">
-             <img src={personImage} alt="Person" className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200" />
+             <ImageWithFade
+               src={personImage}
+               alt="Person"
+               wrapperClassName="w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200"
+               className="w-20 h-20 object-cover"
+             />
              <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow">👤</div>
         </div>
         <div className="text-gray-300 text-2xl">+</div>
         <div className="relative">
-             <img src={clothesImage} alt="Clothes" className="w-20 h-20 rounded-xl object-contain bg-gray-50 border-2 border-gray-200" />
+             <ImageWithFade
+               src={clothesImage}
+               alt="Clothes"
+               wrapperClassName="w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-50"
+               className="w-20 h-20 object-contain"
+             />
              <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow">👕</div>
         </div>
       </div>

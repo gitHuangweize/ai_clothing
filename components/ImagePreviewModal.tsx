@@ -1,4 +1,5 @@
 import React from 'react';
+import ImageWithFade from './ImageWithFade';
 
 interface ImagePreviewModalProps {
   isOpen: boolean;
@@ -15,10 +16,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ isOpen, imageUrl,
       onClick={onClose}
     >
       <div className="relative max-w-full max-h-full w-full h-full flex items-center justify-center">
-        <img 
-          src={imageUrl} 
-          alt="Preview" 
+        <ImageWithFade
+          src={imageUrl}
+          alt="Preview"
+          wrapperClassName="max-w-full max-h-full w-full h-full flex items-center justify-center"
           className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          loading="eager"
         />
         <button 
           className="absolute top-4 right-4 text-white bg-gray-800 bg-opacity-50 rounded-full p-2 hover:bg-opacity-70 transition-colors"

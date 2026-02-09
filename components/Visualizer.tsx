@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { AppStep } from '../types';
 import ImagePreviewModal from './ImagePreviewModal';
+import ImageWithFade from './ImageWithFade';
 
 interface VisualizerProps {
   step: AppStep;
@@ -87,7 +88,13 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         >
           <div className="w-full h-full overflow-hidden rounded-lg bg-white">
             {personImage ? (
-              <img src={personImage} alt="Person" className="w-full h-full object-cover" />
+              <ImageWithFade
+                src={personImage}
+                alt="Person"
+                wrapperClassName="w-full h-full"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
             ) : (
               renderPlaceholder("👤", "人物")
             )}
@@ -105,7 +112,13 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         >
            <div className="w-full h-full overflow-hidden rounded-lg bg-white">
             {clothesImage ? (
-              <img src={clothesImage} alt="Clothes" className="w-full h-full object-cover" />
+              <ImageWithFade
+                src={clothesImage}
+                alt="Clothes"
+                wrapperClassName="w-full h-full"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
             ) : (
               renderPlaceholder("👕", "服装")
             )}
@@ -123,7 +136,13 @@ const Visualizer: React.FC<VisualizerProps> = ({ step, personImage, clothesImage
         >
            <div className="w-full h-full overflow-hidden rounded-lg bg-white">
             {resultImage ? (
-              <img src={resultImage} alt="Result" className="w-full h-full object-cover" />
+              <ImageWithFade
+                src={resultImage}
+                alt="Result"
+                wrapperClassName="w-full h-full"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
             ) : (
               renderPlaceholder("✨", "效果")
             )}
