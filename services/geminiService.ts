@@ -132,7 +132,7 @@ export const generateTryOnImage = async (personBase64: string, clothesBase64: st
     return storageCached;
   }
 
-  const response = await fetchWithRetry('/.netlify/functions/generate-try-on', {
+  const response = await fetchWithRetry('/api/generate-try-on', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ personBase64, clothesBase64 }),
@@ -173,7 +173,7 @@ export const generateClothesFromText = async (prompt: string): Promise<string> =
     return storageCached;
   }
 
-  const response = await fetchWithRetry('/.netlify/functions/generate-clothes', {
+  const response = await fetchWithRetry('/api/generate-clothes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),

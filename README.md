@@ -15,6 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/temp/3
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key. Optional: switch try-on provider to PiAPI by setting `TRYON_PROVIDER=piapi`, `PIAPI_API_KEY=your_key`, and optionally `PIAPI_BASE_URL=https://api.piapi.ai`, `PIAPI_UPLOAD_URL=https://upload.theapi.app`.
+   - Vercel deploy: the app now calls `/api/generate-try-on` and `/api/generate-clothes`.
 3. Run the app:
    `npm run dev`

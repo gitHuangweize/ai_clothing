@@ -1,19 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
-import { MODEL_NAME } from "../../constants";
+import { MODEL_NAME } from "../constants";
 import { setGlobalDispatcher, ProxyAgent } from 'undici';
 
-// 在文件顶部执行，确保开发环境能连上 Google
+// Dev proxy for local testing in CN
 if (process.env.NODE_ENV !== 'production') {
-    const proxyUrl = process.env.HTTPS_PROXY || 'http://127.0.0.1:10808';
-    try {
-        // 只有当没有设置 dispatcher 时才设置，避免重复日志 (虽然重复设置也没大碍)
-        setGlobalDispatcher(new ProxyAgent(proxyUrl));
-    } catch (e) {
-        // 忽略错误
-    }
+  const proxyUrl = process.env.HTTPS_PROXY || 'http://127.0.0.1:10808';
+  try {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl));
+  } catch {
+    // ignore
+  }
 }
-
-
 
 const stripBase64Header = (base64Str: string): string => {
   if (!base64Str.startsWith('data:')) return base64Str;
@@ -22,10 +19,8 @@ const stripBase64Header = (base64Str: string): string => {
 
 const getMimeTypeFromBase64 = (base64Str: string): string => {
   const match = base64Str.match(/^data:image\/(png|jpeg|jpg|webp);base64,/);
-  if (match && match[1]) {
-    return `image/${match[1]}`;
-  }
-  return 'image/png'; // Default
+  if (match && match[1]) return `image/${match[1]}`;
+  return 'image/png';
 };
 
 const getExtensionFromMimeType = (mimeType: string): string => {
@@ -80,10 +75,7 @@ const findFirstImageUrl = (input: any): string | null => {
 const generateWithGemini = async (personBase64: string, clothesBase64: string) => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Server configuration error: API Key missing" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return { status: 500, body: { error: "Server configuration error: API Key missing" } };
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -106,7 +98,7 @@ const generateWithGemini = async (personBase64: string, clothesBase64: string) =
     text: "Generate a realistic, high-quality full-body photo of the person in the first image wearing the clothing shown in the second image. Maintain the person's identity, facial features, pose, and body shape exactly. Replace their original outfit with the new clothing naturally. The background should be simple and clean."
   };
 
-  const GENERATE_TIMEOUT_MS = 70000; // speed-first
+  const GENERATE_TIMEOUT_MS = 70000;
   const MAX_RETRIES = 2;
 
   const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
@@ -155,10 +147,7 @@ const generateWithGemini = async (personBase64: string, clothesBase64: string) =
     const msg = (lastError?.message || "").includes("GENERATION_TIMEOUT")
       ? "生成超时，请重试"
       : "生成失败，请重试";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: (lastError?.message || "").includes("GENERATION_TIMEOUT") ? 504 : 502,
-      headers: { "Content-Type": "application/json" },
-    });
+    return { status: (lastError?.message || "").includes("GENERATION_TIMEOUT") ? 504 : 502, body: { error: msg } };
   }
 
   const parts = response.candidates?.[0]?.content?.parts;
@@ -166,23 +155,18 @@ const generateWithGemini = async (personBase64: string, clothesBase64: string) =
     for (const part of parts) {
       if (part.inlineData && part.inlineData.data) {
         const base64Image = `data:image/png;base64,${part.inlineData.data}`;
-        return new Response(JSON.stringify({ output: base64Image }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return { status: 200, body: { output: base64Image } };
       }
     }
   }
 
-  throw new Error("No image generated.");
+  return { status: 502, body: { error: "No image generated." } };
 };
 
 const generateWithPiAPI = async (personBase64: string, clothesBase64: string) => {
   const apiKey = process.env.PIAPI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Server configuration error: PIAPI_API_KEY missing" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return { status: 500, body: { error: "Server configuration error: PIAPI_API_KEY missing" } };
   }
 
   const baseUrl = process.env.PIAPI_BASE_URL || "https://api.piapi.ai";
@@ -265,42 +249,31 @@ const generateWithPiAPI = async (personBase64: string, clothesBase64: string) =>
       const base64Image = imageUrl.startsWith("data:image/")
         ? imageUrl
         : await fetchImageAsDataUrl(imageUrl);
-      return new Response(JSON.stringify({ output: base64Image }), {
-        headers: { "Content-Type": "application/json" },
-      });
+      return { status: 200, body: { output: base64Image } };
     }
     if (status === "failed" || status === "error") {
       const errorMsg = statusData?.data?.error?.message || statusData?.error?.message || "生成失败，请重试";
-      return new Response(JSON.stringify({ error: errorMsg }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
+      return { status: 502, body: { error: errorMsg } };
     }
   }
 
-  return new Response(JSON.stringify({ error: "生成超时，请重试" }), {
-    status: 504,
-    headers: { "Content-Type": "application/json" },
-  });
+  return { status: 504, body: { error: "生成超时，请重试" } };
 };
 
-export default async (req: Request) => {
+export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+    return res.status(405).send("Method Not Allowed");
   }
 
   try {
-    const { personBase64, clothesBase64 } = await req.json();
+    const { personBase64, clothesBase64 } = req.body || {};
 
     if (!personBase64 || !clothesBase64) {
-      return new Response(JSON.stringify({ error: "Missing images" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(400).json({ error: "Missing images" });
     }
 
-    const MAX_IMAGE_BYTES = 3_000_000; // ~3MB per image (base64 decoded)
-    const MAX_TOTAL_BYTES = 5_500_000; // ~5.5MB combined
+    const MAX_IMAGE_BYTES = 3_000_000;
+    const MAX_TOTAL_BYTES = 5_500_000;
     const estimateBytes = (base64: string) => {
       const raw = stripBase64Header(base64);
       return Math.floor(raw.length * 0.75);
@@ -309,24 +282,17 @@ export default async (req: Request) => {
     const personBytes = estimateBytes(personBase64);
     const clothesBytes = estimateBytes(clothesBase64);
     if (personBytes > MAX_IMAGE_BYTES || clothesBytes > MAX_IMAGE_BYTES || (personBytes + clothesBytes) > MAX_TOTAL_BYTES) {
-      return new Response(JSON.stringify({ error: "图片过大，请压缩后再试" }), {
-        status: 413,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(413).json({ error: "图片过大，请压缩后再试" });
     }
 
     const provider = (process.env.TRYON_PROVIDER || "gemini").toLowerCase();
-    if (provider === "piapi") {
-      return await generateWithPiAPI(personBase64, clothesBase64);
-    }
+    const result = provider === "piapi"
+      ? await generateWithPiAPI(personBase64, clothesBase64)
+      : await generateWithGemini(personBase64, clothesBase64);
 
-    return await generateWithGemini(personBase64, clothesBase64);
-
+    return res.status(result.status).json(result.body);
   } catch (error: any) {
     console.error("Try-On Error:", error);
-    return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: error.message || "Internal Server Error" });
   }
-};
+}
