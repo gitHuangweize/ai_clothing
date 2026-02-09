@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PRESET_PERSON_IMAGES } from '../constants';
-import { convertBlobToBase64, fetchUrlToBase64 } from '../utils/imageUtils';
+import { convertBlobToBase64, fetchUrlToBase64, preloadImages } from '../utils/imageUtils';
 
 interface Step1PersonProps {
   onSelect: (imageUrl: string) => void;
@@ -12,6 +12,20 @@ const Step1Person: React.FC<Step1PersonProps> = ({ onSelect, currentImage }) => 
   const [activeTab, setActiveTab] = useState<'preset' | 'upload' | 'url'>('preset');
   const [urlInput, setUrlInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPresetLoading, setIsPresetLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsPresetLoading(true);
+    preloadImages(PRESET_PERSON_IMAGES)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsPresetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -89,7 +103,14 @@ const Step1Person: React.FC<Step1PersonProps> = ({ onSelect, currentImage }) => 
             </div>
         )}
 
-        {!isLoading && activeTab === 'preset' && (
+        {!isLoading && activeTab === 'preset' && isPresetLoading && (
+            <div className="flex flex-col items-center justify-center h-40 space-y-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="text-gray-400 text-sm">正在加载预设模特...</span>
+            </div>
+        )}
+
+        {!isLoading && activeTab === 'preset' && !isPresetLoading && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {PRESET_PERSON_IMAGES.map((url, index) => (
               <button

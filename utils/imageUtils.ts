@@ -146,3 +146,21 @@ export const getMimeTypeFromBase64 = (base64Str: string): string => {
   }
   return 'image/png'; // Default
 };
+
+export const preloadImages = async (urls: string[]): Promise<void> => {
+  const unique = Array.from(new Set(urls)).filter(Boolean);
+  await Promise.all(
+    unique.map(
+      (url) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = url;
+          if ((img as any).decode) {
+            (img as any).decode().then(resolve).catch(resolve);
+          }
+        })
+    )
+  );
+};

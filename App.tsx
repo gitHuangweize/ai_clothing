@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppStep, HistoryItem } from './types';
 import Visualizer from './components/Visualizer';
 import Step1Person from './components/Step1Person';
 import Step2Clothes from './components/Step2Clothes';
 import Step3Result from './components/Step3Result';
 import Gallery from './components/Gallery';
+import { PRESET_CLOTHES_IMAGES } from './constants';
+import { preloadImages } from './utils/imageUtils';
 
 const App: React.FC = () => {
   const [step, setStep] = useState<AppStep>(AppStep.SELECT_PERSON);
@@ -14,6 +16,22 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // Pre-load from local storage if desired, keeping it simple for now
+  useEffect(() => {
+    const schedule = (cb: () => void) => {
+      if (typeof window === 'undefined') return;
+      const win = window as any;
+      if (typeof win.requestIdleCallback === 'function') {
+        win.requestIdleCallback(cb, { timeout: 1500 });
+      } else {
+        setTimeout(cb, 300);
+      }
+    };
+
+    schedule(() => {
+      preloadImages(PRESET_CLOTHES_IMAGES).catch(() => {});
+    });
+
+  }, []);
   
   const handlePersonSelect = (img: string) => {
     setPersonImage(img);

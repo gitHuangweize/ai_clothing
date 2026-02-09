@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PRESET_CLOTHES_IMAGES } from '../constants';
-import { convertBlobToBase64, fetchUrlToBase64 } from '../utils/imageUtils';
+import { convertBlobToBase64, fetchUrlToBase64, preloadImages } from '../utils/imageUtils';
 import { generateClothesFromText } from '../services/geminiService';
 
 interface Step2ClothesProps {
@@ -18,6 +18,7 @@ const Step2Clothes: React.FC<Step2ClothesProps> = ({ onSelect, personImage, curr
   const [generatingTime, setGeneratingTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [isPresetLoading, setIsPresetLoading] = useState(true);
 
   // Handle Preset Selection (Base64 conversion needed for API)
   const handlePresetSelect = async (url: string) => {
@@ -90,7 +91,20 @@ const Step2Clothes: React.FC<Step2ClothesProps> = ({ onSelect, personImage, curr
   };
 
   // Combine original presets and generated/custom presets
-  const allPresets = [...customPresets, ...PRESET_CLOTHES_IMAGES];
+  const allPresets = useMemo(() => [...customPresets, ...PRESET_CLOTHES_IMAGES], [customPresets]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsPresetLoading(true);
+    preloadImages(PRESET_CLOTHES_IMAGES)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsPresetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full flex flex-col relative">
@@ -125,7 +139,14 @@ const Step2Clothes: React.FC<Step2ClothesProps> = ({ onSelect, personImage, curr
             </div>
         )}
 
-        {!isLoading && activeTab === 'preset' && (
+        {!isLoading && activeTab === 'preset' && isPresetLoading && (
+          <div className="flex flex-col items-center justify-center h-40 space-y-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="text-gray-400 text-sm">正在加载衣柜...</span>
+          </div>
+        )}
+
+        {!isLoading && activeTab === 'preset' && !isPresetLoading && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {allPresets.map((url, index) => (
               <button
